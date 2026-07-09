@@ -22,7 +22,7 @@ export function FlightOptionCard({ flight }: FlightOptionCardProps) {
   const lastSegment = outbound?.segments[outbound.segments.length - 1];
 
   return (
-    <div className="min-w-56 rounded-xl border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="min-w-56 shrink-0 rounded-xl border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex items-center justify-between">
         <span className="font-medium text-zinc-900 dark:text-zinc-50">
           {firstSegment?.carrierName ?? "Flight"}

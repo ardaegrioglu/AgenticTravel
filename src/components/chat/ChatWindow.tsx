@@ -37,12 +37,14 @@ export function ChatWindow() {
   const preferences = latestPreferences(messages);
 
   return (
-    <div className="flex h-full w-full flex-1 flex-col">
+    <div className="flex min-h-0 w-full flex-1 flex-col">
       {preferences ? <TripSummaryPanel preferences={preferences} /> : null}
-      <div className="mx-auto flex h-full w-full max-w-3xl flex-1 flex-col">
+      <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col">
         <MessageList messages={messages} status={status} />
         {error ? (
-          <p className="px-4 py-2 text-sm text-red-600 dark:text-red-400">{error.message}</p>
+          <p className="shrink-0 px-4 py-2 text-sm text-red-600 dark:text-red-400">
+            {error.message}
+          </p>
         ) : null}
         <ChatInput disabled={disabled} onSend={(text) => sendMessage({ text })} />
       </div>

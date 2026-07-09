@@ -27,7 +27,7 @@ export function TripSummaryPanel({ preferences }: TripSummaryPanelProps) {
       : null;
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 pt-4">
+    <div className="mx-auto w-full max-w-3xl shrink-0 px-4 pt-4">
       <div className="rounded-xl border border-zinc-200 bg-white p-3 text-xs dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mb-1 font-medium text-zinc-500 dark:text-zinc-400">Trip so far</div>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-zinc-700 dark:text-zinc-300">

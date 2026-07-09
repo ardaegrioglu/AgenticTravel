@@ -18,8 +18,19 @@ function toLangChainMessage(message: AppUIMessage): BaseMessage {
 }
 
 export async function POST(req: Request): Promise<Response> {
-  const body = (await req.json()) as ChatRequestBody;
+  let body: ChatRequestBody;
+  try {
+    body = (await req.json()) as ChatRequestBody;
+  } catch {
+    return Response.json({ error: "Request body must be valid JSON." }, { status: 400 });
+  }
+
   const { messages, id } = body;
+  if (!Array.isArray(messages)) {
+    return Response.json({ error: "Request body must include a `messages` array." }, {
+      status: 400,
+    });
+  }
 
   // The client resends the full local message history on every turn, but we
   // only forward the newest message to the graph: the MemorySaver checkpoint

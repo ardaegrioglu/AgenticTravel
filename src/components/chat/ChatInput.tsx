@@ -21,7 +21,7 @@ export function ChatInput({ disabled, onSend }: ChatInputProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex gap-2 border-t border-zinc-200 p-4 dark:border-zinc-800"
+      className="flex shrink-0 gap-2 border-t border-zinc-200 p-4 dark:border-zinc-800"
     >
       <input
         value={value}
