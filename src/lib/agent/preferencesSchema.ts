@@ -20,11 +20,11 @@ export const preferencesSchema = z.object({
   durationDays: z
     .number()
     .int()
-    .positive()
+    .min(1)
     .optional()
     .describe("Trip length in days, if exact dates aren't known yet."),
-  travelers: z.number().int().positive().optional().describe("Number of travelers."),
-  budgetAmount: z.number().positive().optional().describe("Total trip budget."),
+  travelers: z.number().int().min(1).optional().describe("Number of travelers."),
+  budgetAmount: z.number().min(1).optional().describe("Total trip budget."),
   budgetCurrency: z
     .string()
     .optional()
@@ -61,11 +61,11 @@ export const REQUIRED_FOR_SEARCH_DESCRIPTION =
 export const preferencesUpdateSchema = preferencesSchema.extend({
   clarifyingQuestion: z
     .string()
-    .nullable()
+    .optional()
     .describe(
       `If ${REQUIRED_FOR_SEARCH_DESCRIPTION} is still missing or ambiguous after this ` +
         "update, put a single, concrete clarifying question here to ask the user before " +
-        "any search is attempted. Otherwise null.",
+        "any search is attempted. Omit this field entirely otherwise.",
     ),
 });
 

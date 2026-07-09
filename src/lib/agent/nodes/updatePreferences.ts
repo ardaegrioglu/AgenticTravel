@@ -37,9 +37,10 @@ export async function updatePreferences(
   );
 
   const result = await model.invoke([
-    new SystemMessage(EXTRACTION_SYSTEM_PROMPT),
     new SystemMessage(
-      `Current known preferences (JSON):\n${JSON.stringify(state.preferences)}`,
+      `${EXTRACTION_SYSTEM_PROMPT}\n\nCurrent known preferences (JSON):\n${JSON.stringify(
+        state.preferences,
+      )}`,
     ),
     ...state.messages,
   ]);

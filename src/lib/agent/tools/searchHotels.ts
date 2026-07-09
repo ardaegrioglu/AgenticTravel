@@ -9,7 +9,7 @@ const schema = z.object({
   guests: z
     .number()
     .int()
-    .positive()
+    .min(1)
     .optional()
     .describe("Number of guests. Defaults to 1."),
 });

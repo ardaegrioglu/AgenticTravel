@@ -12,7 +12,7 @@ const schema = z.object({
   limit: z
     .number()
     .int()
-    .positive()
+    .min(1)
     .optional()
     .describe("Max number of results to return. Defaults to a small curated set."),
 });

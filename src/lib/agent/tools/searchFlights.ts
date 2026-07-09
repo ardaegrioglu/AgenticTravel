@@ -21,7 +21,7 @@ const schema = z.object({
   passengers: z
     .number()
     .int()
-    .positive()
+    .min(1)
     .optional()
     .describe("Number of adult passengers. Defaults to 1."),
   cabinClass: z
