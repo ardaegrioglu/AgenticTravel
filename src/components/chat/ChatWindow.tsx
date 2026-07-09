@@ -2,10 +2,12 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import { useState } from "react";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { MessageList } from "@/components/chat/MessageList";
 import { TripSummaryPanel } from "@/components/chat/TripSummaryPanel";
 import type { Preferences } from "@/lib/agent/preferencesSchema";
+import { getOrCreateThreadId } from "@/lib/session";
 import type { AppUIMessage } from "@/lib/types/chatData";
 
 function latestPreferences(messages: AppUIMessage[]): Preferences | null {
@@ -22,7 +24,12 @@ function latestPreferences(messages: AppUIMessage[]): Preferences | null {
 }
 
 export function ChatWindow() {
+  const [threadId] = useState<string | undefined>(() =>
+    typeof window === "undefined" ? undefined : getOrCreateThreadId(),
+  );
+
   const { messages, sendMessage, status, error } = useChat<AppUIMessage>({
+    id: threadId,
     transport: new DefaultChatTransport({ api: "/api/chat" }),
   });
 
