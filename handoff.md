@@ -1,6 +1,6 @@
 # AgenticTravel — build handoff
 
-Status as of this handoff: **build order steps 0–12 fully done and committed, step 13 blocked, step 14 partially done.** Everything below is written so a fresh session (human or agent) with no memory of this conversation can pick up cleanly.
+Status as of this handoff: **build order steps 0–12 and 14 fully done and committed; step 13 (live end-to-end pass) is the only thing left and it's blocked purely on real API keys.** `npm run build` and `npm run lint` both pass. Everything below is written so a fresh session (human or agent) with no memory of this conversation can pick up cleanly.
 
 ## Where things live
 
@@ -62,38 +62,30 @@ committed) currently has `MOCK_PROVIDERS=true` and blank `GOOGLE_API_KEY` /
    `preferencesSchema.ts`'s `REQUIRED_FOR_SEARCH_DESCRIPTION` based on what you actually
    observe the model doing.
 
-### Step 14 — polish (partially done)
+### Step 14 — polish (DONE)
 
-Done: tool-level error handling (was already in place from step 4 — providers return an
-`error` field in the JSON envelope instead of throwing), route-level hardening (malformed
-JSON body / missing `messages` array now return a clean 400 instead of a 500), loading
-states ("Thinking…" pulse, disabled input while streaming), and a pass on the flex-height
-layout chain so the message list scrolls inside a fixed viewport instead of growing the
-page (see commit "Step 14 (partial)").
+- Tool-level error handling (in place since step 4 — providers catch failures and return
+  an `error` field in the JSON envelope instead of throwing).
+- Route-level hardening (`route.ts`): malformed JSON body and a missing/non-array
+  `messages` field return a clean 400 instead of throwing.
+- Loading states: "Thinking…" pulse indicator, input disabled while streaming.
+- Responsive layout: fixed the flex-height chain (`h-dvh`/`min-h-0`/`shrink-0`) so the
+  message list scrolls inside a fixed viewport; result cards get `shrink-0` for the
+  horizontal-scroll row.
+- **Build fix (commit f4783ec):** `lib/env.ts` now validates lazily via a Proxy on first
+  property access (request time) instead of at module load, so `next build` no longer
+  fails collecting page data for the dynamic `/api/chat` route when keys are absent.
 
-Still to do:
-- Broader responsive/visual QA — needs real content (long itineraries, several result
-  cards at once) to look at, which needs step 13's real keys.
-- Was mid-way through re-verifying the route hardening in a browser when this session
-  paused; re-run this before trusting it blindly (should be low-risk, it's a small
-  self-contained diff, but hasn't been re-observed after the last edit):
-  ```
-  npm run dev
-  curl -X POST localhost:3000/api/chat -H "Content-Type: application/json" -d 'not json'
-  # expect 400, not 500
-  curl -X POST localhost:3000/api/chat -H "Content-Type: application/json" -d '{}'
-  # expect 400, not 500
-  ```
+Verified without real API calls: `npm run build` ✓, `npm run lint` ✓, malformed body →
+400, missing `messages` → 400, root page → 200, and a valid-shaped request with a blank
+`GOOGLE_API_KEY` surfaces the env error as a clean `data: {"type":"error",...}` stream
+event (HTTP 200 + `[DONE]`), not a 500 or hang.
 
-### Final Verification section (not run)
+### Final Verification (static checks — DONE)
 
-The plan's `npm run build` / lint static-check pass hasn't been run as a final combined
-step (only run incrementally after each build step, always clean). Do this once step 14
-is finished:
-```
-npm run lint
-npm run build
-```
+`npm run build` and `npm run lint` both pass on a blank `.env.local`. The remaining
+Verification section items (2–6, 8) all exercise live agent behavior and need real keys —
+that's step 13.
 
 ## Known issue worth re-checking with real credentials
 
