@@ -13,7 +13,9 @@ const baseSchema = z.object({
   MOCK_PROVIDERS: boolFromString,
 });
 
-function loadEnv() {
+type Env = z.infer<typeof baseSchema>;
+
+function loadEnv(): Env {
   const parsed = baseSchema.safeParse(process.env);
 
   if (!parsed.success) {
@@ -40,4 +42,15 @@ function loadEnv() {
   return data;
 }
 
-export const env = loadEnv();
+// Validation is deferred until the first property access (i.e. at request
+// time), not at module evaluation. This lets `next build` collect page data
+// for the dynamic /api/chat route without valid keys present; a request that
+// actually needs the config still fails fast with the same clear error.
+let cached: Env | undefined;
+
+export const env = new Proxy({} as Env, {
+  get(_target, prop: string) {
+    cached ??= loadEnv();
+    return cached[prop as keyof Env];
+  },
+});
