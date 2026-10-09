@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check-keys": "node --env-file=.env.local scripts/check-keys.mjs",
+    "latency-study": "node scripts/latency-study.mjs"
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.19",

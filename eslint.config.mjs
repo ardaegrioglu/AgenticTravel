@@ -7,6 +7,8 @@ const eslintConfig = defineConfig([
   ...nextTs,
   // Override default ignores of eslint-config-next.
   globalIgnores([
+    // Worktree copies of this repo
+    ".claude/**",
     // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",

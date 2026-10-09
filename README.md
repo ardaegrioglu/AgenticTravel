@@ -26,10 +26,22 @@ Fill in `.env.local` with your three keys:
 
 ```
 GOOGLE_API_KEY=
-GOOGLE_GENAI_MODEL=gemini-2.5-flash
+GOOGLE_GENAI_MODEL=gemini-3.5-flash-lite
 DUFFEL_API_KEY=
 FOURSQUARE_API_KEY=
 ```
+
+Then verify the keys actually work (one cheap call per provider, never prints the keys):
+
+```bash
+npm run check-keys
+```
+
+### Known provider limits
+
+- **Gemini 3.5 Flash Lite (free tier):** 15 requests/minute, 500/day. Each chat turn makes 2–3 LLM calls, so a latency study of N runs costs roughly 3N calls.
+- **Duffel Stays** (hotels) is not enabled on new accounts — it returns `403 feature not enabled` until Duffel sales approves it. The app surfaces this as a hotel-search error; flights work with a `duffel_test_` token.
+- **Foursquare** uses the new Places API (`places-api.foursquare.com`). Premium fields such as `description` return `429 no credits` on the free tier, so they are not requested.
 
 ## Run
 
@@ -48,3 +60,15 @@ Once running, try:
 3. A follow-up like `"Actually more nature and parks instead, and make it 5 days."` — should update the trip summary while keeping destination/budget.
 
 Full verification checklist is in the implementation plan.
+
+## Speculative search and latency study
+
+After preferences are extracted, a `speculativeSearch` graph node fires flight, hotel and place searches in parallel (city names are resolved to IATA codes via Duffel) so cards render and the agent can answer without LLM-issued tool calls. Set `SPECULATIVE_SEARCH=false` for the tools-only baseline.
+
+To measure the difference (needs `npm run dev` and live keys; runs serially, ~65s apart, because of the Gemini rate limit):
+
+```bash
+npm run latency-study -- --runs 2
+```
+
+Results land in `scripts/latency-results.csv`.

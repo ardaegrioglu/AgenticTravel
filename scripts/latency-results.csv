@@ -1,0 +1,13 @@
+prompt,run,mode,firstCardMs,finalAnswerMs,prefsMs,cards,error,valid
+0,0,"speculative",1959,19857,843,4,"",true
+0,0,"tools-only",3073,62154,789,4,"",true
+1,0,"tools-only",7093,16877,5694,5,"",true
+1,0,"speculative",1662,9938,915,4,"",true
+0,1,"tools-only",3725,9061,1216,4,"",true
+0,1,"speculative",1691,8281,1172,4,"",true
+1,1,"speculative",3563,13282,2981,4,"",true
+1,1,"tools-only",3620,9618,2012,5,"",true
+0,2,"speculative",1306,9237,850,4,"",true
+0,2,"tools-only",3339,10118,1257,4,"",true
+1,2,"tools-only",2316,9386,872,5,"",true
+1,2,"speculative",1484,11460,967,4,"",true
