@@ -20,9 +20,18 @@ export function HotelOptionCard({ hotel }: HotelOptionCardProps) {
         <span className="text-xs">
           {hotel.checkInDate} → {hotel.checkOutDate}
         </span>
-        <span className="font-semibold text-zinc-900 dark:text-zinc-50">
-          {hotel.totalCurrency} {hotel.totalAmount}
-        </span>
+        {hotel.totalAmount ? (
+          <span className="text-right font-semibold text-zinc-900 dark:text-zinc-50">
+            {hotel.totalCurrency} {hotel.totalAmount}
+            {hotel.source === "google" ? (
+              <span className="block text-[10px] font-normal text-zinc-500 dark:text-zinc-400">
+                via Google Hotels · estimate
+              </span>
+            ) : null}
+          </span>
+        ) : (
+          <span className="text-xs italic">Price not available</span>
+        )}
       </div>
     </div>
   );

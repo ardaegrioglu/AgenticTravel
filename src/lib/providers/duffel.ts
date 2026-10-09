@@ -158,16 +158,118 @@ export async function searchStays(
     return { type: "hotels", query, results: mockStays(params) };
   }
 
+  // Skip Duffel entirely while we know the account lacks Stays access, so each
+  // search doesn't pay for a doomed round-trip before falling back.
+  if (Date.now() >= staysUnavailableUntil) {
+    try {
+      const { searchStaysLive } = await import("./duffel.live");
+      const results = await searchStaysLive(params);
+      return { type: "hotels", query, results: results.map((h) => ({ ...h, source: "duffel" as const })) };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Hotel search failed";
+      if (message.includes("403")) staysUnavailableUntil = Date.now() + STAYS_RETRY_MS;
+      return fallbackToFoursquareLodging(params, query, message);
+    }
+  }
+  return fallbackToFoursquareLodging(params, query, "Duffel Stays is not enabled for this account");
+}
+
+/** Duffel Stays 403s on accounts without access; remember that for a while. */
+let staysUnavailableUntil = 0;
+const STAYS_RETRY_MS = 10 * 60 * 1000;
+
+// SerpApi's free tier is 250 searches/month, so identical searches are cached
+// and a quota/auth failure pauses the tier for a while.
+const GOOGLE_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const GOOGLE_RETRY_MS = 60 * 60 * 1000;
+const googleCache = new Map<string, { at: number; hotels: HotelOption[] }>();
+let googleUnavailableUntil = 0;
+
+/** Priced hotels from Google Hotels via SerpApi; null if unavailable or empty. */
+async function searchGoogleHotels(params: SearchStaysParams): Promise<HotelOption[] | null> {
+  if (!env.SERPAPI_API_KEY || Date.now() < googleUnavailableUntil) return null;
+
+  const key = [params.city, params.checkInDate, params.checkOutDate, params.guests ?? 1]
+    .join("|")
+    .toLowerCase();
+  const cached = googleCache.get(key);
+  if (cached && Date.now() - cached.at < GOOGLE_CACHE_TTL_MS) return cached.hotels;
+
   try {
-    const { searchStaysLive } = await import("./duffel.live");
-    const results = await searchStaysLive(params);
-    return { type: "hotels", query, results };
+    const { searchGoogleHotelsLive } = await import("./serpapi.live");
+    console.log(`[serpapi] google_hotels search: ${key}`);
+    const hotels = await searchGoogleHotelsLive(params);
+    if (hotels.length === 0) return null;
+    googleCache.set(key, { at: Date.now(), hotels });
+    return hotels;
   } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    console.warn(`[serpapi] ${message}`);
+    if (/\b(401|403|429)\b/.test(message)) googleUnavailableUntil = Date.now() + GOOGLE_RETRY_MS;
+    return null;
+  }
+}
+
+/**
+ * Fallbacks when Duffel Stays fails: priced Google Hotels results if a
+ * SerpApi key is configured, otherwise Foursquare listings. These have no price
+ * or availability, which the UI and prompt handle explicitly. If Foursquare
+ * fails too, report the original Duffel error.
+ */
+async function fallbackToFoursquareLodging(
+  params: SearchStaysParams,
+  query: HotelSearchResult["query"],
+  duffelError: string,
+): Promise<HotelSearchResult> {
+  const priced = await searchGoogleHotels(params);
+  if (priced) return { type: "hotels", query, results: priced };
+
+  try {
+    const { searchLodgingLive } = await import("./foursquare.live");
+    const places = await searchLodgingLive(params.city);
     return {
       type: "hotels",
       query,
-      results: [],
-      error: err instanceof Error ? err.message : "Hotel search failed",
+      results: places.map((p) => ({
+        id: p.id,
+        name: p.name,
+        address: p.address,
+        city: params.city,
+        checkInDate: params.checkInDate,
+        checkOutDate: params.checkOutDate,
+        source: "foursquare" as const,
+      })),
     };
+  } catch {
+    return { type: "hotels", query, results: [], error: duffelError };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Airport / city code resolution
+// ---------------------------------------------------------------------------
+
+const codeCache = new Map<string, string | null>();
+
+/**
+ * Turns "Lisbon" / "New York" / "JFK" into an IATA code. Three-letter inputs
+ * pass through. Returns null if the place can't be resolved (callers should
+ * skip the flight search rather than send a junk code to Duffel).
+ */
+export async function resolveAirportCode(name: string): Promise<string | null> {
+  const trimmed = name.trim();
+  if (/^[A-Za-z]{3}$/.test(trimmed)) return trimmed.toUpperCase();
+  if (env.MOCK_PROVIDERS) return trimmed.slice(0, 3).toUpperCase();
+
+  const key = trimmed.toLowerCase();
+  if (codeCache.has(key)) return codeCache.get(key)!;
+
+  try {
+    const { resolveAirportCodeLive } = await import("./duffel.live");
+    const code = await resolveAirportCodeLive(trimmed);
+    if (code) codeCache.set(key, code);
+    return code;
+  } catch {
+    return null;
   }
 }

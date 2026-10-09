@@ -46,9 +46,18 @@ export const hotelOptionSchema = z.object({
   city: z.string(),
   checkInDate: z.string().describe("YYYY-MM-DD"),
   checkOutDate: z.string().describe("YYYY-MM-DD"),
-  totalAmount: z.string().describe("Decimal string, e.g. '340.00'"),
-  totalCurrency: z.string(),
+  totalAmount: z
+    .string()
+    .optional()
+    .describe("Decimal string, e.g. '340.00'. Absent when the source has no pricing."),
+  totalCurrency: z.string().optional(),
   thumbnailUrl: z.string().optional(),
+  source: z
+    .enum(["duffel", "google", "foursquare"])
+    .optional()
+    .describe(
+      "Where the listing came from. Google prices are estimates; Foursquare listings carry no price or availability.",
+    ),
 });
 export type HotelOption = z.infer<typeof hotelOptionSchema>;
 

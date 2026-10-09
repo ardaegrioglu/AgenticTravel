@@ -87,13 +87,53 @@ export async function searchFlightOffersLive(
   }));
 }
 
+const DUFFEL_API = "https://api.duffel.com";
+
+/** Native-fetch Duffel call that surfaces the API's real error message. */
+async function duffelFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${DUFFEL_API}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${env.DUFFEL_API_KEY!}`,
+      "Duffel-Version": "v2",
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    let message = text.slice(0, 300);
+    try {
+      const parsed = JSON.parse(text) as { errors?: Array<{ message?: string }> };
+      message = parsed.errors?.[0]?.message ?? message;
+    } catch {
+      // body wasn't JSON (e.g. a plain-text 403); keep the raw text
+    }
+    throw new Error(`Duffel ${response.status}: ${message}`);
+  }
+  return JSON.parse(text) as T;
+}
+
+interface DuffelStayResult {
+  cheapest_rate_total_amount: string;
+  cheapest_rate_currency: string;
+  accommodation: {
+    id: string;
+    name: string;
+    ratings?: Array<{ value: number }> | null;
+    photos?: Array<{ url: string }> | null;
+    location: { address: { line_one?: string; city_name?: string } };
+  };
+}
+
 export async function searchStaysLive(
   params: SearchStaysParams,
 ): Promise<HotelOption[]> {
   const { city, checkInDate, checkOutDate, guests } = params;
-  const duffel = getClient();
 
-  const suggestions = await duffel.suggestions.list({ name: city });
+  const suggestions = await duffelFetch<{
+    data: Array<{ type: string; latitude: number | null; longitude: number | null }>;
+  }>(`/places/suggestions?query=${encodeURIComponent(city)}`);
   const place =
     suggestions.data.find((p) => p.type === "city" && p.latitude != null) ??
     suggestions.data.find((p) => p.latitude != null);
@@ -102,18 +142,24 @@ export async function searchStaysLive(
     throw new Error(`Could not resolve a location for "${city}".`);
   }
 
-  const guestCount = guests ?? 1;
-
-  const response = await duffel.stays.search({
-    check_in_date: checkInDate,
-    check_out_date: checkOutDate,
-    rooms: 1,
-    guests: Array.from({ length: guestCount }, () => ({ type: "adult" as const })),
-    location: {
-      radius: 15,
-      geographic_coordinates: { latitude: place.latitude, longitude: place.longitude },
+  const response = await duffelFetch<{ data: { results: DuffelStayResult[] } }>(
+    "/stays/search",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        data: {
+          check_in_date: checkInDate,
+          check_out_date: checkOutDate,
+          rooms: 1,
+          guests: Array.from({ length: guests ?? 1 }, () => ({ type: "adult" })),
+          location: {
+            radius: 15,
+            geographic_coordinates: { latitude: place.latitude, longitude: place.longitude },
+          },
+        },
+      }),
     },
-  });
+  );
 
   return response.data.results.slice(0, 5).map((result) => ({
     id: result.accommodation.id,
@@ -132,4 +178,32 @@ export async function searchStaysLive(
     totalCurrency: result.cheapest_rate_currency,
     thumbnailUrl: result.accommodation.photos?.[0]?.url,
   }));
+}
+
+/**
+ * Resolves a free-form place name ("New York", "Lisbon") to an IATA code via
+ * Duffel's place suggestions. Uses native fetch (see handoff.md re: the SDK
+ * under Turbopack). Prefers city codes so metro areas (NYC, LON) cover every
+ * airport.
+ */
+export async function resolveAirportCodeLive(name: string): Promise<string | null> {
+  const url = new URL("https://api.duffel.com/places/suggestions");
+  url.searchParams.set("query", name);
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${env.DUFFEL_API_KEY!}`,
+      "Duffel-Version": "v2",
+      Accept: "application/json",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Duffel place lookup failed: ${response.status} ${response.statusText}`);
+  }
+  const { data } = (await response.json()) as {
+    data: Array<{ type: string; iata_code?: string | null; iata_city_code?: string | null }>;
+  };
+  const city = data.find((p) => p.type === "city" && p.iata_code);
+  if (city?.iata_code) return city.iata_code;
+  const airport = data.find((p) => p.iata_code);
+  return airport?.iata_city_code ?? airport?.iata_code ?? null;
 }
