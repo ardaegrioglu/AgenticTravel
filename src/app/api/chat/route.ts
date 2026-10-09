@@ -39,12 +39,20 @@ export async function POST(req: Request): Promise<Response> {
   const lastMessage = messages[messages.length - 1];
   const threadId = id ?? "default";
 
+  // Dev-only A/B switch for the latency study (scripts/latency-study.mjs).
+  const header = req.headers.get("x-speculative-search");
+  const speculative =
+    process.env.NODE_ENV !== "production" && (header === "true" || header === "false")
+      ? header === "true"
+      : undefined;
+
   const stream = createUIMessageStream<AppUIMessage>({
     execute: async ({ writer }) => {
       await streamGraphToUIMessageStream({
         writer,
         input: { messages: lastMessage ? [toLangChainMessage(lastMessage)] : [] },
         threadId,
+        speculative,
       });
     },
     onError: (error) =>

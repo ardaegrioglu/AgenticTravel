@@ -7,10 +7,18 @@ const boolFromString = z
 
 const baseSchema = z.object({
   GOOGLE_API_KEY: z.string().min(1, "GOOGLE_API_KEY is required"),
-  GOOGLE_GENAI_MODEL: z.string().min(1).default("gemini-2.5-flash"),
+  GOOGLE_GENAI_MODEL: z.string().min(1).default("gemini-3.5-flash-lite"),
   DUFFEL_API_KEY: z.string().optional(),
   FOURSQUARE_API_KEY: z.string().optional(),
+  // Optional: enables priced hotel results via SerpApi Google Hotels.
+  SERPAPI_API_KEY: z.string().optional(),
   MOCK_PROVIDERS: boolFromString,
+  // Defaults to on; set to "false" to fall back to LLM-driven tool calls only
+  // (used as the baseline when measuring speculative search latency).
+  SPECULATIVE_SEARCH: z
+    .string()
+    .optional()
+    .transform((v) => v?.toLowerCase() !== "false"),
 });
 
 type Env = z.infer<typeof baseSchema>;

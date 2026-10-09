@@ -17,6 +17,8 @@ export type ChatDataParts = {
   toolStatus: ToolStatusData;
   searchResult: SearchResult;
   preferences: Preferences;
+  /** Server-side latency milestone (ms since request start). Transient: not stored on messages. */
+  timing: { event: "preferences" | "firstCard" | "firstText" | "end"; ms: number };
 };
 
 /** The app's concrete UIMessage type, parameterized with our custom data parts. */
