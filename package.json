@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "check-keys": "node --env-file=.env.local scripts/check-keys.mjs",
     "latency-study": "node scripts/latency-study.mjs"
   },
