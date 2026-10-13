@@ -12,6 +12,8 @@ const baseSchema = z.object({
   FOURSQUARE_API_KEY: z.string().optional(),
   // Optional: enables priced hotel results via SerpApi Google Hotels.
   SERPAPI_API_KEY: z.string().optional(),
+  // Optional: Redis connection URL for the shared cache (in-memory fallback if unset).
+  REDIS_URL: z.string().optional(),
   MOCK_PROVIDERS: boolFromString,
   // Defaults to on; set to "false" to fall back to LLM-driven tool calls only
   // (used as the baseline when measuring speculative search latency).

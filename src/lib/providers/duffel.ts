@@ -1,4 +1,5 @@
 import { env } from "@/lib/env";
+import { cacheGet, cacheSet } from "@/lib/cache";
 import type {
   FlightOption,
   FlightSearchResult,
@@ -180,27 +181,26 @@ const STAYS_RETRY_MS = 10 * 60 * 1000;
 
 // SerpApi's free tier is 250 searches/month, so identical searches are cached
 // and a quota/auth failure pauses the tier for a while.
-const GOOGLE_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const GOOGLE_CACHE_TTL_S = 6 * 60 * 60;
 const GOOGLE_RETRY_MS = 60 * 60 * 1000;
-const googleCache = new Map<string, { at: number; hotels: HotelOption[] }>();
 let googleUnavailableUntil = 0;
 
 /** Priced hotels from Google Hotels via SerpApi; null if unavailable or empty. */
 async function searchGoogleHotels(params: SearchStaysParams): Promise<HotelOption[] | null> {
   if (!env.SERPAPI_API_KEY || Date.now() < googleUnavailableUntil) return null;
 
-  const key = [params.city, params.checkInDate, params.checkOutDate, params.guests ?? 1]
+  const key = "hotels:google:" + [params.city, params.checkInDate, params.checkOutDate, params.guests ?? 1]
     .join("|")
     .toLowerCase();
-  const cached = googleCache.get(key);
-  if (cached && Date.now() - cached.at < GOOGLE_CACHE_TTL_MS) return cached.hotels;
+  const cached = await cacheGet<HotelOption[]>(key);
+  if (cached) return cached;
 
   try {
     const { searchGoogleHotelsLive } = await import("./serpapi.live");
     console.log(`[serpapi] google_hotels search: ${key}`);
     const hotels = await searchGoogleHotelsLive(params);
     if (hotels.length === 0) return null;
-    googleCache.set(key, { at: Date.now(), hotels });
+    await cacheSet(key, hotels, GOOGLE_CACHE_TTL_S);
     return hotels;
   } catch (err) {
     const message = err instanceof Error ? err.message : "";
@@ -249,7 +249,7 @@ async function fallbackToFoursquareLodging(
 // Airport / city code resolution
 // ---------------------------------------------------------------------------
 
-const codeCache = new Map<string, string | null>();
+const CODE_CACHE_TTL_S = 24 * 60 * 60;
 
 /**
  * Turns "Lisbon" / "New York" / "JFK" into an IATA code. Three-letter inputs
@@ -261,13 +261,14 @@ export async function resolveAirportCode(name: string): Promise<string | null> {
   if (/^[A-Za-z]{3}$/.test(trimmed)) return trimmed.toUpperCase();
   if (env.MOCK_PROVIDERS) return trimmed.slice(0, 3).toUpperCase();
 
-  const key = trimmed.toLowerCase();
-  if (codeCache.has(key)) return codeCache.get(key)!;
+  const key = `airport:${trimmed.toLowerCase()}`;
+  const cachedCode = await cacheGet<string>(key);
+  if (cachedCode) return cachedCode;
 
   try {
     const { resolveAirportCodeLive } = await import("./duffel.live");
     const code = await resolveAirportCodeLive(trimmed);
-    if (code) codeCache.set(key, code);
+    if (code) await cacheSet(key, code, CODE_CACHE_TTL_S);
     return code;
   } catch {
     return null;

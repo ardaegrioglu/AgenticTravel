@@ -72,3 +72,13 @@ npm run latency-study -- --runs 2
 ```
 
 Results land in `scripts/latency-results.csv`.
+
+## Docker and CI/CD
+
+```bash
+docker compose up --build   # app on :3000 plus Redis (REDIS_URL is set for you)
+```
+
+Search results (SerpApi hotels, airport-code lookups) are cached in Redis when `REDIS_URL` is set, and in memory otherwise.
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the type check, lint and build on every push, builds the Docker image, and on pushes to `main` publishes it to `ghcr.io/<owner>/<repo>` tagged `latest` and with the commit SHA.
